@@ -25,10 +25,10 @@ export default defineConfig({
         jsx: 'automatic',
     },
     server: {
-        host: '0.0.0.0', // Faz o Vite "ouvir" em todas as interfaces de rede
-        port: 5173,      // A porta que você expôs no docker-compose.yml
+        host: '0.0.0.0',
+        port: 5173,
         hmr: {
-            host: 'localhost', // Força o HMR a se conectar via localhost no navegador
+            host: 'localhost',
         }
     }
 });
