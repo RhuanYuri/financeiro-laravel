@@ -16,6 +16,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
 
+    Route::get('receita', function () {
+        return Inertia::render('receita');
+    })->name('receita');
+
     Route::get('/revenue/getTotal/{type}', [RevenueController::class, 'getTotal'])
         ->name('revenue.getTotal');
     Route::resource('revenue', RevenueController::class);
