@@ -12,7 +12,8 @@ class Member extends Model
     protected $fillable = [
         'user_id',
         'home_id',
-        'role_id'
+        'role_id',
+        'type'
     ];
 
     public function user(){

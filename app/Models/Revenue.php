@@ -23,9 +23,10 @@ class Revenue extends Model
         'installments_paid',
         'status',
         'isPublic',
-        'type',
         'member_id',
+        'category_id',
         'date',
+        'type', // revenue or expense
     ];
 
     /**
@@ -50,5 +51,10 @@ class Revenue extends Model
     public function category()
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function installments()
+    {
+        return $this->hasMany(RevenueInstallments::class);
     }
 }

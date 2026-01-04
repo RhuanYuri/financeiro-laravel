@@ -16,4 +16,9 @@ class Category extends Model
     protected $fillable = [
         'name',
     ];
+
+    public function revenues()
+    {
+        return $this->hasMany(Revenue::class);
+    }
 }

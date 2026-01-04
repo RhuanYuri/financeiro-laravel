@@ -22,22 +22,33 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-type GetTotalResponse = {
-    total: number;
+type GetStatsResponse = {
+    totalRevenue: number;
+    pendingRevenue: number;
+    activeClients: number;
 };
 
 export default function Receita() {
     const [totalRevenue, setTotalRevenue] = useState<number | null>(null);
+    const [pendingRevenue, setPendingRevenue] = useState<number | null>(null);
+    const [totalExpense, setTotalExpense] = useState<number | null>(null);
+    const [pendingExpense, setPendingExpense] = useState<number | null>(null);
+    const [activeClients, setActiveClients] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [filterStatus, setFilterStatus] = useState<string>('all');
 
     useEffect(() => {
         axios
-            .get<GetTotalResponse>(revenues.getTotal.url({ type: 'revenue' }))
+            .get<GetStatsResponse | any>('/revenue/stats') // Update type locally or cast to any for quick fix if type is not updated yet
             .then((response) => {
-                setTotalRevenue(response.data.total);
+                setTotalRevenue(response.data.totalRevenue);
+                setPendingRevenue(response.data.pendingRevenue);
+                setTotalExpense(response.data.totalExpense);
+                setPendingExpense(response.data.pendingExpense);
+                setActiveClients(response.data.activeClients);
             })
             .catch((error) => {
-                console.error('Erro ao buscar total de receitas:', error);
+                console.error('Erro ao buscar estatísticas:', error);
             })
             .finally(() => {
                 setIsLoading(false);
@@ -49,17 +60,21 @@ export default function Receita() {
             <Head title="Receita" />
             <div className="flex flex-1 flex-col gap-6 p-4">
                 {/* 1. Cabeçalho com Filtros e Botão */}
-                <RevenueHeader />
+                <RevenueHeader onStatusChange={setFilterStatus} />
 
                 {/* 2. Cards de Estatísticas */}
                 <RevenueStats
                     totalRevenue={totalRevenue}
+                    pendingRevenue={pendingRevenue}
+                    totalExpense={totalExpense}
+                    pendingExpense={pendingExpense}
+                    activeClients={activeClients}
                     isLoading={isLoading}
                 />
 
                 {/* 3. Tabela de Dados */}
                 <Card>
-                    <RevenueDataTable />
+                    <RevenueDataTable filterStatus={filterStatus} />
                 </Card>
             </div>
         </AppLayout>

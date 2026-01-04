@@ -5,47 +5,20 @@ import { DataTable } from '@/components/ui/data-table'; // Componente reutilizá
 import { CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Skeleton } from '../ui/skeleton';
 
-// Mock de dados - Substitua isso pela sua chamada de API
-async function getRevenueData(): Promise<Revenue[]> {
-    // Simula um delay de API
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+// Função de fetch removida pois usamos axios direto ou um helper
+import axios from 'axios';
 
-    return [
-        {
-            id: 'REV-001',
-            description: 'Desenvolvimento de Landing Page',
-            amount: 2500.0,
-            status: 'paid',
-            date: '2025-10-25',
-            customer: 'Empresa X',
-        },
-        {
-            id: 'REV-002',
-            description: 'Manutenção de Sistema',
-            amount: 750.0,
-            status: 'pending',
-            date: '2025-11-05',
-            customer: 'Empresa Y',
-        },
-        {
-            id: 'REV-003',
-            description: 'Consultoria SEO',
-            amount: 1200.0,
-            status: 'overdue',
-            date: '2025-10-01',
-            customer: 'Empresa Z',
-        },
-    ];
-}
-
-export default function RevenueDataTable() {
+export default function RevenueDataTable({ filterStatus }: { filterStatus?: string }) {
     const [data, setData] = useState<Revenue[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         setIsLoading(true);
-        getRevenueData()
-            .then(setData)
+        axios.get<Revenue[]>('/revenue')
+            .then((response) => {
+                setData(response.data);
+            })
+            .catch((error) => console.error("Erro ao carregar receitas:", error))
             .finally(() => setIsLoading(false));
     }, []);
 
@@ -73,7 +46,13 @@ export default function RevenueDataTable() {
                 {/* Aqui você usa o componente DataTable reutilizável do shadcn/ui.
                   Se você ainda não o criou, siga a documentação do shadcn/ui "Data Table".
                 */}
-                <DataTable columns={columns} data={data} />
+                <DataTable
+                    columns={columns}
+                    data={filterStatus && filterStatus !== 'all'
+                        ? data.filter(item => item.status === filterStatus)
+                        : data
+                    }
+                />
             </CardContent>
         </>
     );

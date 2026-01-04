@@ -8,6 +8,7 @@ interface CardDataProps {
     description: string;
     icon: LucideIcon;
     className?: string;
+    format?: 'currency' | 'number';
 }
 
 /**
@@ -26,8 +27,9 @@ export default function CardData({
     description,
     icon: Icon,
     className,
+    format = 'currency',
 }: CardDataProps) {
-    const formattedValue = formatCurrency(value);
+    const formattedValue = format === 'currency' ? formatCurrency(value) : value.toString();
 
     return (
         <Card className={cn(className)}>

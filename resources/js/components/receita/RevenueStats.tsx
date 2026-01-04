@@ -6,49 +6,65 @@ import { DollarSign, Users, TrendingUp } from 'lucide-react';
 
 interface RevenueStatsProps {
     totalRevenue: number | null;
+    pendingRevenue: number | null;
+    totalExpense: number | null;
+    pendingExpense: number | null;
+    activeClients: number | null;
     isLoading: boolean;
 }
 
 export default function RevenueStats({
-                                         totalRevenue,
-                                         isLoading,
-                                     }: RevenueStatsProps) {
+    totalRevenue,
+    pendingRevenue,
+    totalExpense,
+    pendingExpense,
+    activeClients,
+    isLoading,
+}: RevenueStatsProps) {
     if (isLoading) {
         return (
-            <div className="grid gap-4 md:grid-cols-3">
-                {/* Usando o PlaceholderPattern que você importou */}
-                <Card>
-                    <PlaceholderPattern className="h-[128px] w-full" />
-                </Card>
-                <Card>
-                    <PlaceholderPattern className="h-[128px] w-full" />
-                </Card>
-                <Card>
-                    <PlaceholderPattern className="h-[128px] w-full" />
-                </Card>
+            <div className="grid gap-4 md:grid-cols-5">
+                {[...Array(5)].map((_, i) => (
+                    <Card key={i}>
+                        <PlaceholderPattern className="h-[128px] w-full" />
+                    </Card>
+                ))}
             </div>
         );
     }
 
     return (
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-5">
             <CardData
-                title="Receita Total (Mês)"
+                title="Receita Total"
                 value={totalRevenue || 0}
-                description="+20.1% do último mês"
+                description="Total de receitas"
                 icon={DollarSign}
             />
             <CardData
                 title="Receita Pendente"
-                value={1250.75} // Exemplo estático
-                description="+5.2% do último mês"
+                value={pendingRevenue || 0}
+                description="Receitas a receber"
+                icon={TrendingUp}
+            />
+            <CardData
+                title="Despesa Total"
+                value={totalExpense || 0}
+                description="Total de despesas"
+                icon={DollarSign}
+            />
+            <CardData
+                title="Despesa Pendente"
+                value={pendingExpense || 0}
+                description="Despesas a pagar"
                 icon={TrendingUp}
             />
             <CardData
                 title="Clientes Ativos"
-                value={23} // Exemplo estático
-                description="+2 desde a última hora"
+                value={activeClients || 0}
+                description="Membros com transações"
                 icon={Users}
+                format="number"
             />
         </div>
     );

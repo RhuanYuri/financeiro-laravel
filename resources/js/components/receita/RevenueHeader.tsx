@@ -1,5 +1,3 @@
-// src/components/receita/revenue-header.tsx
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
     Select,
@@ -8,9 +6,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { PlusCircle, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
+import { AddRevenueDialog } from './addRevenueDialog'; // 1. Importe o novo componente
 
-export default function RevenueHeader() {
+interface RevenueHeaderProps {
+    onStatusChange: (status: string) => void;
+}
+
+export default function RevenueHeader({ onStatusChange }: RevenueHeaderProps) {
     return (
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <h1 className="text-2xl font-bold tracking-tight">
@@ -18,35 +21,32 @@ export default function RevenueHeader() {
             </h1>
 
             <div className="flex flex-col gap-2 md:flex-row md:items-center">
-            {/* Filtro de Pesquisa */}
+                {/* Filtro de Pesquisa */}
                 <div className="relative">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
-                    type="search"
-                    placeholder="Buscar por descrição..."
-                    className="w-full pl-8 md:w-[300px]"
-                        />
+                        type="search"
+                        placeholder="Buscar por descrição..."
+                        className="w-full pl-8 md:w-[300px]"
+                    />
                 </div>
 
                 {/* Filtro de Status */}
-                <Select defaultValue="all">
+                <Select defaultValue="all" onValueChange={onStatusChange}>
                     <SelectTrigger className="w-full md:w-[180px]">
                         <SelectValue placeholder="Filtrar por status" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="all">Todos os Status</SelectItem>
-                        <SelectItem value="pending">Pendente</SelectItem>
+                        <SelectItem value="all">Todas</SelectItem>
+                        <SelectItem value="open">Em Aberto</SelectItem>
                         <SelectItem value="paid">Pago</SelectItem>
-                        <SelectItem value="overdue">Vencido</SelectItem>
                     </SelectContent>
                 </Select>
 
-                {/* Botão de Cadastrar */}
-                <Button className="w-full md:w-auto">
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Cadastrar Receita
-                </Button>
+                {/* 2. Renderize o componente de diálogo aqui */}
+                <AddRevenueDialog />
+
             </div>
         </div>
-);
+    );
 }

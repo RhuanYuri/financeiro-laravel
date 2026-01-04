@@ -3,16 +3,21 @@ import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/react';
-
-// Importe o CardData
 import CardData from '@/components/dashboard/card-data';
-// Importe os ícones que você vai usar
-import { DollarSign, Users } from 'lucide-react';
-// Importe o <Card> base para os placeholders
-import { Card } from '@/components/ui/card';
+import { DollarSign, Users, TrendingUp, TrendingDown } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import revenues from '@/routes/revenue';
+import {
+    LineChart,
+    Line,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+    Legend
+} from 'recharts';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -21,59 +26,124 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-type GetTotalResponse = {
-    total: number;
-};
+interface DashboardStats {
+    monthRevenue: number;
+    monthExpense: number;
+    pendingRevenue: number;
+    pendingExpense: number;
+    activeClients: number;
+    revenueDesc: string;
+    expenseDesc: string;
+    clientsDesc: string;
+    chartData: Array<{
+        month: string;
+        revenue: number;
+        expense: number;
+    }>;
+}
 
 export default function Dashboard() {
-    const [totalRevenue, setTotalRevenue] = useState<number | null>(null)
+    const [stats, setStats] = useState<DashboardStats | null>(null);
 
     useEffect(() => {
-        axios
-            .get<GetTotalResponse>(revenues.getTotal.url({ type: 'revenue' }))
-            .then((response) => {
-                // Aqui o TS já sabe que response.data é GetTotalResponse
-                setTotalRevenue(response.data.total);
-            })
-            .catch((error) => {
-                console.error('Erro ao buscar total de receitas:', error);
-            });
+        axios.get('/revenue/stats')
+            .then(res => setStats(res.data))
+            .catch(err => console.error(err));
     }, []);
+
+    const formatCurrency = (value: number) => {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
             <div className="flex flex-1 flex-col gap-4 rounded-xl p-4">
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-4">
+                    <CardData
+                        icon={TrendingUp}
+                        title="Receita do Mês"
+                        value={stats?.monthRevenue || 0}
+                        description={stats?.revenueDesc || "Carregando..."}
+                        className="text-green-600"
+                    />
+                    <CardData
+                        icon={TrendingDown}
+                        title="Despesa do Mês"
+                        value={stats?.monthExpense || 0}
+                        description={stats?.expenseDesc || "Carregando..."}
+
+                    />
+                    {/* Custos em Aberto (Pending Expenses) */}
                     <CardData
                         icon={DollarSign}
-                        title="Receita Total"
-                        value={totalRevenue || 0}
-                        description="+20.1% desde o mês passado"
+                        title="Custos em Aberto"
+                        value={stats?.pendingExpense || 0}
+                        description="Total acumulado pendente"
                     />
                     <CardData
                         icon={Users}
-                        title="Novos Clientes"
-                        value={2350}
-                        description="+19% desde o mês passado"
+                        title="Usuários Ativos"
+                        value={stats?.activeClients || 0}
+                        description={stats?.clientsDesc || "Carregando..."}
+                        format="number"
                     />
-                    <Card className="relative flex min-h-[126px] items-center justify-center overflow-hidden p-4">
-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                        <span className="relative z-10 text-sm text-muted-foreground">
-                            Vendas (Em breve...)
-                        </span>
-                    </Card>
                 </div>
-                <div className="relative min-h-[60vh] flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
-                    <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
-                    <div className="absolute top-4 left-4 md:top-6 md:left-6">
-                        <h3 className="text-lg font-semibold">
-                            Visão Geral da Atividade
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                            Dados dos últimos 12 meses.
-                        </p>
-                    </div>
-                </div>
+
+                {/* Grafico */}
+                <Card className="flex flex-col h-[500px]">
+                    <CardHeader>
+                        <CardTitle>Histórico Financeiro</CardTitle>
+                        <CardDescription>Receitas vs. Despesas (Últimos 12 meses)</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-1 pb-4">
+                        <div className="h-full w-full">
+                            {stats?.chartData ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={stats.chartData}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                        <XAxis
+                                            dataKey="month"
+                                            tickLine={false}
+                                            axisLine={false}
+                                            tickMargin={8}
+                                        />
+                                        <YAxis
+                                            tickLine={false}
+                                            axisLine={false}
+                                            tickFormatter={(value) => `R$ ${value}`}
+                                        />
+                                        <Tooltip
+                                            formatter={(value: any) => formatCurrency(Number(value))}
+                                            labelStyle={{ color: 'black' }}
+                                        />
+                                        <Legend />
+                                        <Line
+                                            type="monotone"
+                                            dataKey="revenue"
+                                            name="Receitas"
+                                            stroke="#16a34a"
+                                            strokeWidth={2}
+                                            dot={false}
+                                        />
+                                        <Line
+                                            type="monotone"
+                                            dataKey="expense"
+                                            name="Despesas"
+                                            stroke="#dc2626"
+                                            strokeWidth={2}
+                                            dot={false}
+                                        />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="flex items-center justify-center h-full text-muted-foreground">
+                                    Carregando gráfico...
+                                </div>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
         </AppLayout>
     );

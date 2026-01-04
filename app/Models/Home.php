@@ -20,12 +20,16 @@ class Home extends Model
 
     protected $casts = [
         'name' => 'string',
-        'description' => 'datetime',
+        'description' => 'string',
     ];
 
     protected $fillable = [
         'name',
         'description',
     ];
+
+    public function members() {
+        return $this->hasMany(Member::class);
+}
 
 }
