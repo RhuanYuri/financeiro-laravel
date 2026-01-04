@@ -6,6 +6,7 @@ import { Head } from '@inertiajs/react';
 import CardData from '@/components/dashboard/card-data';
 import { DollarSign, Users, TrendingUp, TrendingDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
@@ -44,16 +45,21 @@ interface DashboardStats {
 
 export default function Dashboard() {
     const [stats, setStats] = useState<DashboardStats | null>(null);
+    const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
 
     useEffect(() => {
-        axios.get('/revenue/stats')
+        axios.get('/revenue/stats', { params: { year: selectedYear } })
             .then(res => setStats(res.data))
             .catch(err => console.error(err));
-    }, []);
+    }, [selectedYear]);
 
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
     };
+
+    // Generate years for select (Current year +/- 2 years)
+    const currentYear = new Date().getFullYear();
+    const years = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1, currentYear + 2];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -92,9 +98,23 @@ export default function Dashboard() {
 
                 {/* Grafico */}
                 <Card className="flex flex-col h-[500px]">
-                    <CardHeader>
-                        <CardTitle>Histórico Financeiro</CardTitle>
-                        <CardDescription>Receitas vs. Despesas (Últimos 12 meses)</CardDescription>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <div>
+                            <CardTitle>Histórico Financeiro</CardTitle>
+                            <CardDescription>Receitas vs. Despesas ({selectedYear})</CardDescription>
+                        </div>
+                        <Select value={selectedYear} onValueChange={setSelectedYear}>
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue placeholder="Selecione o ano" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {years.map((year) => (
+                                    <SelectItem key={year} value={year.toString()}>
+                                        {year}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </CardHeader>
                     <CardContent className="flex-1 pb-4">
                         <div className="h-full w-full">

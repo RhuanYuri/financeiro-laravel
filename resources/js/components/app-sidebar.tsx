@@ -13,7 +13,7 @@ import {
 import { dashboard, receita } from '@/routes';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { BookOpen, DollarSign, Folder, LayoutGrid, Users } from 'lucide-react';
+import { BookOpen, DollarSign, Folder, LayoutGrid, Users, ChartPie } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
@@ -31,6 +31,11 @@ const mainNavItems: NavItem[] = [
         title: 'Membros',
         href: '/membros',
         icon: Users,
+    },
+    {
+        title: 'Estatísticas',
+        href: '/estatisticas',
+        icon: ChartPie,
     },
 ];
 

@@ -54,12 +54,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         
         Route::get('/revenue/members', [RevenueController::class, 'getMembers'])
             ->name('revenue.members');
+        Route::get('/statistics/data', [App\Http\Controllers\StatisticsController::class, 'index'])
+            ->name('statistics.data');
+        
         Route::resource('revenue', RevenueController::class);
 
         // Members Area (Inside Home)
         Route::get('/membros', function () {
             return Inertia::render('membros');
         })->name('membros');
+
+        Route::get('/estatisticas', function () {
+            return Inertia::render('estatisticas');
+        })->name('estatisticas');
         
         Route::get('/api/members', [App\Http\Controllers\MemberController::class, 'index']);
         Route::post('/api/members/invite', [App\Http\Controllers\MemberController::class, 'invite']);

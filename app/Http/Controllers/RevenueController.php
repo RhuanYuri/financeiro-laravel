@@ -194,6 +194,7 @@ class RevenueController extends Controller
     public function getStats(Request $request)
     {
         $homeId = session('home_id');
+        $year = $request->input('year', now()->year);
 
         // Helper to get stats for a specific month
         $getStatsForMonth = function ($year, $month) use ($homeId) {
@@ -230,15 +231,17 @@ class RevenueController extends Controller
         $expenseDesc = ($expenseGrowth >= 0 ? '+' : '') . $expenseGrowth . '% desde o mês passado';
         $clientsDesc = ($clientsGrowth >= 0 ? '+' : '') . $clientsGrowth . '% desde o mês passado';
 
-        // 12 Months Chart Data
+        // Chart Data for the requested Year
         $chartData = [];
-        for ($i = 11; $i >= 0; $i--) {
-            $date = now()->subMonths($i);
-            $stats = $getStatsForMonth($date->year, $date->month);
+        for ($month = 1; $month <= 12; $month++) {
+            $stats = $getStatsForMonth($year, $month);
+            // Create a date object just for formatting the month name
+            $dateObj = \Carbon\Carbon::createFromDate($year, $month, 1);
             $chartData[] = [
-                'month' => $date->format('M'), // Jan, Feb... (English by default, consider locale)
+                'month' => $dateObj->isoFormat('MMM'), // Jan, Feb, etc.
                 'revenue' => $stats['revenue'],
                 'expense' => $stats['expense'],
+                'fullDate' => $dateObj->format('Y-m'),
             ];
         }
         
@@ -259,7 +262,8 @@ class RevenueController extends Controller
             'revenueDesc' => $revenueDesc,
             'expenseDesc' => $expenseDesc,
             'clientsDesc' => $clientsDesc,
-            'chartData' => $chartData
+            'chartData' => $chartData,
+            'year' => $year
         ]);
     }
 
