@@ -1,6 +1,19 @@
-# Build assets using a Node.js stage
+# ===============================
+# Build frontend assets (Node + PHP CLI)
+# ===============================
 FROM node:22-bookworm AS build
+
 WORKDIR /app
+
+# Install PHP CLI for Wayfinder
+RUN apt-get update && apt-get install -y \
+    php-cli \
+    php-mbstring \
+    php-xml \
+    php-curl \
+    php-zip \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy package files and install dependencies
 COPY package.json package-lock.json ./
@@ -9,10 +22,13 @@ RUN npm ci
 # Copy the rest of the application code
 COPY . .
 
-# Build the frontend assets
+# Build the frontend assets (Vite + Wayfinder)
 RUN npm run build
 
-# --- Final Stage ---
+
+# ===============================
+# Final Stage (PHP + Apache)
+# ===============================
 FROM php:8.2-apache
 
 # Install system dependencies
@@ -37,7 +53,7 @@ RUN docker-php-ext-install \
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
 
-# Configure PHP behavior for production
+# PHP production settings
 RUN echo "upload_max_filesize=10M" > /usr/local/etc/php/conf.d/uploads.ini \
     && echo "post_max_size=10M" >> /usr/local/etc/php/conf.d/uploads.ini \
     && echo "memory_limit=256M" >> /usr/local/etc/php/conf.d/memory.ini
@@ -45,36 +61,35 @@ RUN echo "upload_max_filesize=10M" > /usr/local/etc/php/conf.d/uploads.ini \
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy Apache configuration
-# We are creating a custom configuration file inline or copying an existing one.
-# Reusing the existing simple conf logic:
+# Apache config
 COPY docker/laravel/apache.conf /etc/apache2/sites-available/000-default.conf
 
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Copy only composer files first to leverage Docker cache
+# Copy composer files first (cache)
 COPY composer.json composer.lock ./
 
-# Install Composer dependencies (optimized for production)
+# Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader --no-scripts
 
-# Copy the rest of the application code
+# Copy application code
 COPY . .
 
-# Copy built frontend assets from the build stage
+# Copy built frontend assets
 COPY --from=build /app/public/build ./public/build
 
-# Ensure permissions are correct
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+# Permissions
+RUN chown -R www-data:www-data \
+    storage \
+    bootstrap/cache
 
-# Expose port 80
+# Expose port
 EXPOSE 80
 
-# Copy and set entrypoint script
+# Entrypoint
 COPY docker/production-entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 USER root
-
 ENTRYPOINT ["entrypoint.sh"]
