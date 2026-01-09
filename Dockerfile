@@ -1,38 +1,28 @@
 # ===============================
-# Build frontend assets (Node + PHP CLI)
+# Estágio 1: Build de Assets (Node.js)
 # ===============================
-FROM node:22-bookworm AS build
-
+FROM node:22-slim AS build
 WORKDIR /app
 
-# Install PHP CLI for Wayfinder
-RUN apt-get update && apt-get install -y \
+# Instala apenas o necessário para o PHP CLI (Wayfinder)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     php-cli \
-    php-mbstring \
-    php-xml \
-    php-curl \
-    php-zip \
     unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy package files and install dependencies
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --quiet
 
-# Copy the rest of the application code
 COPY . .
-
-# Build the frontend assets (Vite + Wayfinder)
 RUN npm run build
 
-
 # ===============================
-# Final Stage (PHP + Apache)
+# Estágio 2: Imagem Final (PHP + Apache)
 # ===============================
 FROM php:8.2-apache
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+# Otimização de camadas: agrupar instalação e limpeza
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libzip-dev \
     zip \
     unzip \
@@ -40,56 +30,48 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     curl \
     git \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install PHP extensions
-RUN docker-php-ext-install \
+    libpng-dev \
+    && docker-php-ext-configure intl \
+    && docker-php-ext-install -j$(nproc) \
     pdo_mysql \
     zip \
     bcmath \
     intl \
-    opcache
+    opcache \
+    && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
+    && rm -rf /var/lib/apt/lists/*
 
-# Enable Apache mod_rewrite
-RUN a2enmod rewrite
+# Configurações do Apache e PHP
+ENV APACHE_DOCUMENT_ROOT /var/www/html/public
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf \
+    && sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf \
+    && a2enmod rewrite
 
-# PHP production settings
-RUN echo "upload_max_filesize=10M" > /usr/local/etc/php/conf.d/uploads.ini \
-    && echo "post_max_size=10M" >> /usr/local/etc/php/conf.d/uploads.ini \
-    && echo "memory_limit=256M" >> /usr/local/etc/php/conf.d/memory.ini
-
-# Set working directory
-WORKDIR /var/www/html
-
-# Apache config
-COPY docker/laravel/apache.conf /etc/apache2/sites-available/000-default.conf
-
-# Install Composer
+# Instala Composer de forma eficiente
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Copy composer files first (cache)
+WORKDIR /var/www/html
+
+# Cache de dependências do PHP (Copiamos apenas os arquivos do composer primeiro)
 COPY composer.json composer.lock ./
+RUN composer install --no-dev --optimize-autoloader --no-scripts --no-interaction
 
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader --no-scripts
-
-# Copy application code
+# Copiar o restante da aplicação
 COPY . .
 
-# Copy built frontend assets
+# Copiar assets do estágio de build
 COPY --from=build /app/public/build ./public/build
 
-# Permissions
-RUN chown -R www-data:www-data \
-    storage \
-    bootstrap/cache
+# Ajuste de permissões para o Railway (www-data)
+RUN chown -R www-data:www-data storage bootstrap/cache
 
-# Expose port
+# Railway usa a variável de ambiente PORT. Ajustamos o Apache para ouvir nela.
+RUN sed -s -i 's/80/${PORT}/' /etc/apache2/ports.conf /etc/apache2/sites-available/*.conf
+
 EXPOSE 80
 
-# Entrypoint
+# Script de entrada
 COPY docker/production-entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-USER root
 ENTRYPOINT ["entrypoint.sh"]
