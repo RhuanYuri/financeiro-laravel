@@ -21,12 +21,17 @@ RUN apt-get update && apt-get install -y \
     php-curl \
     && rm -rf /var/lib/apt/lists/*
 
-# COPIAMOS o 'vendor' gerado no estágio anterior
-COPY --from=vendor /app/vendor ./vendor
 COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
+
+# Copia vendor do PHP (garantindo que sobrescreva qualquer coisa local)
+COPY --from=vendor /app/vendor ./vendor
+
+# Cria .env para o build (necessário para alguns comandos artisan)
+RUN cp .env.example .env
+
 
 # Agora o build vai funcionar porque o vendor/autoload.php existe!
 RUN npm run build
