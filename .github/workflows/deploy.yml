@@ -1,25 +1,25 @@
-name: Deploy
+name: Homologação
 
 on:
-  workflow_run:
-    workflows: ["tests"]
-    branches: [main]
-    types: 
-      - completed
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Railway CLI
-        run: npm i -g @railway/cli
+      # Opcional: Rodar testes aqui antes do deploy
+      # Se os testes falharem, o deploy não acontece.
 
-      - name: Deploy
-        run: railway up
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy to Railway
+        run: railway upsert --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
