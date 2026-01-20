@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -18,6 +19,10 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
         });
+
+        DB::table('homes')->insert([
+            ['id' => 1, 'name' => 'Default Home', 'description' => 'Default home for initial setup', 'created_at' => now(), 'updated_at' => now()],
+        ]);
     }
 
     /**
