@@ -35,7 +35,7 @@ import {
 } from '@/components/ui/popover';
 import { Switch } from '@/components/ui/switch';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, PlusCircle } from 'lucide-react';
+import { CalendarIcon, PlusCircle, Loader2 } from 'lucide-react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -43,10 +43,10 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import axios from 'axios';
-import { CreateCategoryDialog } from './createCategoryDialog'; // Import new component
+import { CreateCategoryDialog } from './createCategoryDialog';
 import { CurrencyInput } from '@/components/ui/currency-input';
 
-// 1. Definição do Schema com Zod (baseado nas suas migrations)
+// 1. Definição do Schema com Zod
 const formSchema = z.object({
     description: z.string().min(2, "Descrição deve ter pelo menos 2 caracteres"),
     value: z.coerce.number().min(0.01, "O valor deve ser maior que 0"),
@@ -55,12 +55,10 @@ const formSchema = z.object({
     member_id: z.string().min(1, "Selecione um membro"),
     category_id: z.string().min(1, "Selecione uma categoria"),
     first_due_date: z.date(),
-    status: z.string().nullish(), // Optional
+    status: z.string().nullish(),
     type: z.enum(['revenue', 'expense']),
-    is_installment_value: z.boolean().default(false), // New field
+    is_installment_value: z.boolean().default(false),
 });
-
-
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -79,6 +77,7 @@ export function AddRevenueDialog({ revenueToEdit }: { revenueToEdit?: any }) {
     const [open, setOpen] = React.useState(false);
     const [members, setMembers] = React.useState<Member[]>([]);
     const [categories, setCategories] = React.useState<Category[]>([]);
+    const [isLoading, setIsLoading] = React.useState(false);
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema) as any,
@@ -92,11 +91,10 @@ export function AddRevenueDialog({ revenueToEdit }: { revenueToEdit?: any }) {
             first_due_date: new Date(),
             status: 'open',
             type: 'revenue',
-            is_installment_value: false, // Default to false (Total Value)
+            is_installment_value: false,
         },
     });
 
-    // Effect to populate form when editing
     React.useEffect(() => {
         if (revenueToEdit) {
             form.reset({
@@ -109,8 +107,6 @@ export function AddRevenueDialog({ revenueToEdit }: { revenueToEdit?: any }) {
                 first_due_date: new Date(revenueToEdit.date),
                 status: revenueToEdit.status,
                 type: revenueToEdit.type || 'revenue',
-                // When editing, we don't know if the original value was total or per installment.
-                // For simplicity, we'll assume the stored value is the total value.
                 is_installment_value: false,
             });
             setOpen(true);
@@ -140,6 +136,7 @@ export function AddRevenueDialog({ revenueToEdit }: { revenueToEdit?: any }) {
     }, [open, form, revenueToEdit]);
 
     function onSubmit(values: FormValues) {
+        setIsLoading(true); // Start loading
         let finalValue = values.value;
 
         // If user input represents installment value, multiply by total installments
@@ -172,6 +169,9 @@ export function AddRevenueDialog({ revenueToEdit }: { revenueToEdit?: any }) {
             })
             .catch(error => {
                 console.error("Erro ao salvar transação:", error);
+            })
+            .finally(() => {
+                setIsLoading(false); // Stop loading
             });
     }
 
@@ -433,10 +433,19 @@ export function AddRevenueDialog({ revenueToEdit }: { revenueToEdit?: any }) {
                         </div>
 
                         <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
                                 Cancelar
                             </Button>
-                            <Button type="submit">Salvar Receita</Button>
+                            <Button type="submit" disabled={isLoading}>
+                                {isLoading ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Salvando...
+                                    </>
+                                ) : (
+                                    'Salvar Receita'
+                                )}
+                            </Button>
                         </DialogFooter>
                     </form>
                 </Form>

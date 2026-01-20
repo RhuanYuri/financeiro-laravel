@@ -44,6 +44,13 @@ class HandleInertiaRequests extends Middleware
             'quote' => ['message' => trim($message), 'author' => trim($author)],
             'auth' => [
                 'user' => $request->user(),
+                'current_home' => function () use ($request) {
+                    $homeId = session('home_id');
+                    if ($homeId) {
+                        return \App\Models\Home::find($homeId);
+                    }
+                    return null;
+                },
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];

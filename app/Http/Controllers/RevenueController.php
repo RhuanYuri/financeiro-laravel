@@ -196,18 +196,23 @@ class RevenueController extends Controller
         $homeId = session('home_id');
         $year = $request->input('year', now()->year);
 
-        // Helper to get stats for a specific month
+        // Helper to get stats for a specific month based on Installments due date
         $getStatsForMonth = function ($year, $month) use ($homeId) {
-            $base = Revenue::whereHas('member', function ($q) use ($homeId) {
+            $base = \App\Models\RevenueInstallments::whereHas('revenue.member', function ($q) use ($homeId) {
                 $q->where('home_id', $homeId);
             })
-            ->whereYear('date', $year)
-            ->whereMonth('date', $month);
+            ->whereYear('dueDate', $year)
+            ->whereMonth('dueDate', $month);
 
             return [
                 'revenue' => (clone $base)->where('type', 'revenue')->sum('value'),
                 'expense' => (clone $base)->where('type', 'expense')->sum('value'),
-                'active_clients' => (clone $base)->distinct('member_id')->count('member_id')
+                // Count unique members who have installments in this month
+                'active_clients' => \App\Models\Revenue::whereHas('installments', function($q) use ($year, $month) {
+                    $q->whereYear('dueDate', $year)->whereMonth('dueDate', $month);
+                })->whereHas('member', function($q) use ($homeId) {
+                    $q->where('home_id', $homeId);
+                })->distinct('member_id')->count('member_id')
             ];
         };
 
@@ -245,19 +250,19 @@ class RevenueController extends Controller
             ];
         }
         
-        // Pending Stats (Overall)
-        $query = Revenue::whereHas('member', function ($q) use ($homeId) {
+        // Pending Stats (Overall based on Installments)
+        $pendingQuery = \App\Models\RevenueInstallments::whereHas('revenue.member', function ($q) use ($homeId) {
             $q->where('home_id', $homeId);
-        });
+        })->where('status', 'open');
         
-        $pendingRevenue = (clone $query)->where('type', 'revenue')->where('status', 'open')->sum('value');
-        $pendingExpense = (clone $query)->where('type', 'expense')->where('status', 'open')->sum('value');
+        $pendingRevenue = (clone $pendingQuery)->where('type', 'revenue')->sum('value');
+        $pendingExpense = (clone $pendingQuery)->where('type', 'expense')->sum('value');
 
         return response()->json([
             'monthRevenue' => $currentMonthStats['revenue'],
             'monthExpense' => $currentMonthStats['expense'],
-            'pendingRevenue' => $pendingRevenue, // All time pending
-            'pendingExpense' => $pendingExpense, // All time pending
+            'pendingRevenue' => $pendingRevenue,
+            'pendingExpense' => $pendingExpense,
             'activeClients' => $currentMonthStats['active_clients'],
             'revenueDesc' => $revenueDesc,
             'expenseDesc' => $expenseDesc,

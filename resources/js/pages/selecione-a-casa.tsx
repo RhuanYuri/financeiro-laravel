@@ -1,8 +1,25 @@
 import { router } from '@inertiajs/react';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { Home, Mail } from 'lucide-react';
+import { Home, Mail, Loader2, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import axios from 'axios';
 import { useEffect, useState } from 'react';
 
@@ -24,10 +41,23 @@ interface InviteData {
 }
 
 export default function SelectHome() {
-  const { post, processing } = useForm();
+  const { post, processing: formProcessing } = useForm();
   const [homes, setHomes] = useState<HomeData[]>([]);
   const [invites, setInvites] = useState<InviteData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Loading states for specific actions
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [selectingHomeId, setSelectingHomeId] = useState<number | null>(null);
+  const [processingInviteId, setProcessingInviteId] = useState<number | null>(null);
+
+  // Dialog states
+  const [inviteToDenyId, setInviteToDenyId] = useState<number | null>(null);
+  const [messageDialog, setMessageDialog] = useState<{ open: boolean; title: string; description: string }>({
+    open: false,
+    title: '',
+    description: ''
+  });
 
   const fetchData = async () => {
     try {
@@ -49,42 +79,72 @@ export default function SelectHome() {
   }, []);
 
   const handleLogout = () => {
+    setLoggingOut(true);
     axios.post('/logout')
       .then(() => {
         router.visit('/');
       })
       .catch((error) => {
         console.error('Erro ao fazer logout:', error);
+        setLoggingOut(false);
       });
   };
 
   const handleSelectHome = (homeId: number) => {
+    setSelectingHomeId(homeId);
     axios.post('api/select-home', { homeId })
       .then(() => {
         router.visit('dashboard');
       })
       .catch((error) => {
         console.error('Erro ao selecionar casa:', error);
+        setSelectingHomeId(null);
       });
   };
 
   const handleAcceptInvite = (id: number) => {
+    setProcessingInviteId(id);
     axios.post(`api/invites/${id}/accept`)
       .then(() => {
-        alert('Convite aceito!'); // Or simple toast
-        fetchData(); // Refresh data
+        setMessageDialog({
+          open: true,
+          title: "Sucesso!",
+          description: "Convite aceito com sucesso!"
+        });
+        fetchData();
       })
-      .catch(err => alert('Erro ao aceitar convite.'));
+      .catch(err => {
+        setMessageDialog({
+          open: true,
+          title: "Erro",
+          description: "Não foi possível aceitar o convite."
+        });
+      })
+      .finally(() => {
+        setProcessingInviteId(null);
+      });
   };
 
-  const handleDenyInvite = (id: number) => {
-    if (confirm('Tem certeza que deseja recusar este convite?')) {
-      axios.post(`api/invites/${id}/deny`)
-        .then(() => {
-          fetchData();
-        })
-        .catch(err => alert('Erro ao recusar convite.'));
-    }
+  const confirmDenyInvite = () => {
+    if (inviteToDenyId === null) return;
+
+    setProcessingInviteId(inviteToDenyId);
+    setInviteToDenyId(null); // Close the confirm dialog
+
+    axios.post(`api/invites/${inviteToDenyId}/deny`)
+      .then(() => {
+        fetchData();
+      })
+      .catch(err => {
+        setMessageDialog({
+          open: true,
+          title: "Erro",
+          description: "Não foi possível recusar o convite."
+        });
+      })
+      .finally(() => {
+        setProcessingInviteId(null);
+      });
   };
 
   return (
@@ -104,7 +164,10 @@ export default function SelectHome() {
 
         <CardContent className="space-y-4">
           {isLoading ? (
-            <div className="text-center py-6">Carregando...</div>
+            <div className="py-12 flex flex-col items-center justify-center text-muted-foreground gap-2">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p>Carregando suas casas...</p>
+            </div>
           ) : (
             <div className="space-y-4">
               {homes?.length > 0 ? (
@@ -113,13 +176,16 @@ export default function SelectHome() {
                     <Button
                       key={home.id}
                       variant="outline"
-                      className="flex h-auto w-full flex-col items-start p-4 hover:bg-accent hover:text-accent-foreground"
+                      className="flex h-auto w-full flex-col items-start p-4 hover:bg-accent hover:text-accent-foreground relative"
                       onClick={() => handleSelectHome(home.id)}
-                      disabled={processing}
+                      disabled={selectingHomeId !== null || loggingOut}
                     >
-                      <span className="font-semibold text-lg">{home.name}</span>
+                      <div className="flex items-center w-full justify-between">
+                        <span className="font-semibold text-lg">{home.name}</span>
+                        {selectingHomeId === home.id && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
+                      </div>
                       {home.description && (
-                        <span className="text-sm text-muted-foreground font-normal">
+                        <span className="text-sm text-muted-foreground font-normal text-left">
                           {home.description}
                         </span>
                       )}
@@ -127,7 +193,7 @@ export default function SelectHome() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-2">
+                <div className="text-center py-6 border rounded-lg bg-muted/20 border-dashed">
                   <p className="text-muted-foreground">
                     Você ainda não participa de nenhuma casa.
                   </p>
@@ -135,7 +201,7 @@ export default function SelectHome() {
               )}
 
               <Link href="/create-home" className="w-full block">
-                <Button variant={homes?.length > 0 ? "secondary" : "default"} className="w-full">
+                <Button variant={homes?.length > 0 ? "secondary" : "default"} className="w-full" disabled={selectingHomeId !== null || loggingOut}>
                   {homes?.length > 0 ? "Cadastrar outra casa" : "Cadastrar nova casa"}
                 </Button>
               </Link>
@@ -157,21 +223,29 @@ export default function SelectHome() {
                       <p className="text-xs text-muted-foreground">Convite para participar</p>
                     </div>
                     <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => handleAcceptInvite(invite.id)}
-                      >
-                        Aceitar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs text-red-500 hover:text-red-900 border-red-200 hover:bg-red-50"
-                        onClick={() => handleDenyInvite(invite.id)}
-                      >
-                        Recusar
-                      </Button>
+                      {processingInviteId === invite.id ? (
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      ) : (
+                        <>
+                          <Button
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => handleAcceptInvite(invite.id)}
+                            disabled={processingInviteId !== null}
+                          >
+                            Aceitar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs text-red-500 hover:text-red-900 border-red-200 hover:bg-red-50"
+                            onClick={() => setInviteToDenyId(invite.id)}
+                            disabled={processingInviteId !== null}
+                          >
+                            Recusar
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -185,12 +259,45 @@ export default function SelectHome() {
               onClick={() => handleLogout()}
               variant="link"
               className="p-0 h-auto font-normal underline hover:text-primary"
+              disabled={loggingOut || selectingHomeId !== null}
             >
+              {loggingOut ? <Loader2 className="h-3 w-3 animate-spin mr-1 inline" /> : null}
               Fazer Logout
             </Button>
           </div>
         </CardContent>
       </Card>
+
+      {/* Messages Dialog (Success/Error) */}
+      <Dialog open={messageDialog.open} onOpenChange={(open) => setMessageDialog(prev => ({ ...prev, open }))}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{messageDialog.title}</DialogTitle>
+            <DialogDescription>
+              {messageDialog.description}
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm Deny Dialog */}
+      <AlertDialog open={inviteToDenyId !== null} onOpenChange={(open) => !open && setInviteToDenyId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Essa ação não pode ser desfeita. Você recusará o convite para esta casa.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDenyInvite} className="bg-red-600 hover:bg-red-700">
+              Recusar Convite
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }
