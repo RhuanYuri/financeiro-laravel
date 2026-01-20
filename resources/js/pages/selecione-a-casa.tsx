@@ -105,33 +105,38 @@ export default function SelectHome() {
         <CardContent className="space-y-4">
           {isLoading ? (
             <div className="text-center py-6">Carregando...</div>
-          ) : homes?.length > 0 ? (
-            <div className="grid gap-4">
-              {homes.map((home) => (
-                <Button
-                  key={home.id}
-                  variant="outline"
-                  className="flex h-auto w-full flex-col items-start p-4 hover:bg-accent hover:text-accent-foreground"
-                  onClick={() => handleSelectHome(home.id)}
-                  disabled={processing}
-                >
-                  <span className="font-semibold text-lg">{home.name}</span>
-                  {home.description && (
-                    <span className="text-sm text-muted-foreground font-normal">
-                      {home.description}
-                    </span>
-                  )}
-                </Button>
-              ))}
-            </div>
           ) : (
-            <div className="text-center py-6">
-              <p className="text-muted-foreground mb-4">
-                Você ainda não participa de nenhuma casa.
-              </p>
+            <div className="space-y-4">
+              {homes?.length > 0 ? (
+                <div className="grid gap-4">
+                  {homes.map((home) => (
+                    <Button
+                      key={home.id}
+                      variant="outline"
+                      className="flex h-auto w-full flex-col items-start p-4 hover:bg-accent hover:text-accent-foreground"
+                      onClick={() => handleSelectHome(home.id)}
+                      disabled={processing}
+                    >
+                      <span className="font-semibold text-lg">{home.name}</span>
+                      {home.description && (
+                        <span className="text-sm text-muted-foreground font-normal">
+                          {home.description}
+                        </span>
+                      )}
+                    </Button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-2">
+                  <p className="text-muted-foreground">
+                    Você ainda não participa de nenhuma casa.
+                  </p>
+                </div>
+              )}
+
               <Link href="/create-home" className="w-full block">
-                <Button variant="default" className="w-full">
-                  Criar Nova Casa
+                <Button variant={homes?.length > 0 ? "secondary" : "default"} className="w-full">
+                  {homes?.length > 0 ? "Cadastrar outra casa" : "Cadastrar nova casa"}
                 </Button>
               </Link>
             </div>
